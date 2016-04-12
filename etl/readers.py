@@ -1,41 +1,48 @@
 """
-methods for reading in our different content types. returns a dict
+methods for reading in our different content types.
+returns a tuple with file type and contents
 """
 
-class read(Object):
-	def __init__():
-		pass
+import xmltodict
 
-	def ingest(self, loc):
-		"""figure out what kind of content type we are ingesting and send"""
-
-		with open(loc) as f:
-			content = ''.join(f.read().split())
-
-    	if loc.endswith('.osm'):
-    		return self.__read_osm(content)
-
-    	elif loc.endswith('.json'):
-    		return self.__read_json(content)
-
-    	elif loc.endswith('.xml'):
-			return self.__read_xml(content)
-
-		elif loc.endswith('.FROMOSM?'):    	
-			break
-
-	def __read_osm(self, content):
-		"""ingest osm"""
+#/Users/ewanog/Downloads/server_forms_for_script/16dcc24f-fe8f-44fe-aaeb-cadccb251e3c/data.xml'
 
 
-	def __read_json(self, content):
-		"""ingest json"""
-			return json.loads(content)
+def ingest(self, loc):
+	"""figure out what kind of content type we are ingesting and send"""
 
-	def __read_xml(self, content):
-		#do we need?
-			pass
+	if loc.endswith('.osm'):
+		return self.__read_osm(loc)
 
-	def __read_FROMOSM(self, content):
+	elif loc.endswith('.json'):
+		return self.__read_json(loc)
+
+	elif loc.endswith('.xml'):
+		return self.__read_xml(loc)
+
+	elif loc.endswith('.FROMOSM?'):    	
+		break
+
+def __read_osm(self, loc):
+	"""ingest osm"""
+
+
+def __read_json(self, loc):
+	"""ingest json - just return file contents"""	
+	with open(loc) as f:
+		content = ''.join(f.read().split())
+	
+	return ('json', content)
+
+def __read_xml(self, loc):
+	"""ingest xml"""
+
+	with open(loc) as fd:
+    	doc = xmltodict.parse(fd.read())
+
+	return ('xml', dict([(str(k), str(v)) for k,v in doc.values()[0].items()])
+
+
+def __read_FROMOSM(self, loc):
 
 
