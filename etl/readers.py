@@ -13,9 +13,6 @@ import xmltodict
 def ingest(loc):
 	"""figure out what kind of content type we are ingesting and send"""
 
-	if loc.endswith('.osm'):
-		return __read_osm(loc)
-
 	elif loc.endswith('.json'):
 		return __read_json(loc)
 
@@ -25,14 +22,12 @@ def ingest(loc):
 	elif loc.endswith('.FROMOSM?'):    	
 		break
 
-def __read_osm(loc):
-	"""ingest osm"""
-
 
 def __read_json(loc):
-	"""ingest json - just return file contents"""	
-	with open(loc) as f:
-		content = ''.join(f.read().split())
+	"""ingest json - just return file contents"""
+
+with open(loc) as f:
+	content = ''.join(f.read().split())
 	
 	return ('json', content)
 
@@ -45,6 +40,6 @@ def __read_xml(loc):
 	return ('xml', dict([(str(k), str(v)) for k,v in doc.values()[0].items()])
 
 
-def __read_FROMOSM(loc):
+def __read_fromosm(loc):
 
 

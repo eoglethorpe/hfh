@@ -4,18 +4,21 @@
 main etl executor
 """
 import time
-from os import environ, popen
+import json
+import ConfigParser
+from os import environ, popen, listdir, walk
+from os.path import isfile, join
+
 
 #import config and set vars
-import ConfigParser
-
 cfg = ConfigParser.ConfigParser()
 cfg.read('config.ini')
 INIT_LOC = cfg.get('AWS', 'init_loc')
 INIT_IP = cfg.get('AWS', 'init_ip')
 DEST_LOC = cfg.get('AWS', 'dest_loc')
 PEM = cfg.get('AWS', 'pem')
-
+DV = time.strftime("%Y-%m-%d:%H%M")
+DV = '2016-05-26:1211'
 #logging
 import logging
 from logging.config import fileConfig
@@ -26,7 +29,6 @@ logger = logging.getLogger()
 def transfer():
     """move files from the prod server"""
     TAR = 'transfer.tar.gz'
-    DV = time.strftime("%Y-%m-%d:%H%M")
 
     logger.info('Transfering AWS')
     try:
@@ -52,5 +54,40 @@ def transfer():
     else:
         logger.info('Surveys transfer completed')
 
+def get_an_entry(path):
+    _get_json(path)
+    
+
+def _get_json(path):
+    with open(path + 'data.json') as f:
+		content = ''.join(f.read().split())
+
+    jc = json.loads(content)
+
+    #add meta contents as top level info
+    for k in jc['meta'].iterkeys():
+        if k != 'deviceId':
+            jc[k] = jc['meta'][k]
+
+    return jc, jc['formId']
+
+
+def get_all_entries():
+    """ iterate through all surveys"""
+    base = DEST_LOC + DV
+    surveys = [f for f in listdir(base) if not isfile(join(base, f))]
+    logger.info('Extracting the following surveys...')
+    logger.info(surveys)
+
+    #directory structure: .../submissions/date_file/surveys/entry_id/.osm|.xml|.json
+
+    #traverse through to get entries and their data files
+    for fl in walk(base).next()[1]:
+        cd = join(base, fl)
+        logger.info('Pulling %i entries for %s' % (len(walk(cd).next()[1]), fl))
+        for sl in walk(cd).next()[1]:
+            get_an_entry(join(cd, sl) + '/')
+
 if __name__ =='__main__':
-    transfer()
+    get_all_entries()
+    #transfer()
