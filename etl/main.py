@@ -9,6 +9,7 @@ import ConfigParser
 from os import environ, popen, listdir, walk
 from os.path import isfile, join
 
+import overpass
 
 #import config and set vars
 cfg = ConfigParser.ConfigParser()
@@ -55,8 +56,9 @@ def transfer():
         logger.info('Surveys transfer completed')
 
 def get_an_entry(path):
-    _get_json(path)
-    
+    if _get_osm_file(path):
+        print _get_osm_file(path)
+
 
 def _get_json(path):
     with open(path + 'data.json') as f:
@@ -70,6 +72,20 @@ def _get_json(path):
             jc[k] = jc['meta'][k]
 
     return jc, jc['formId']
+
+def _get_osm_file(path):
+    try:
+        loc = [v.split('.')[-1] for v in listdir(path)].index('osm')
+        with open(path + listdir(path)[loc]) as f:
+		    content = ''.join(f.read().split())
+
+        return content
+
+    except:
+        pass
+
+def _get_osm_hosted(id):
+    """get osm info from overpass"""
 
 
 def get_all_entries():
