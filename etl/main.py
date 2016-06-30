@@ -10,23 +10,22 @@ import csv
 from os import environ, popen, listdir, walk
 from os.path import isfile, join
 
+
 import overpass
 
+import db
+import setup
+
 #import config and set vars
-cfg = ConfigParser.ConfigParser()
-cfg.read('config.ini')
+cfg = setup.config()
 INIT_LOC = cfg.get('AWS', 'init_loc')
 INIT_IP = cfg.get('AWS', 'init_ip')
 DEST_LOC = cfg.get('AWS', 'dest_loc')
 PEM = cfg.get('AWS', 'pem')
 DV = time.strftime("%Y-%m-%d:%H%M")
 DV = '2016-05-26:1211'
-#logging
-import logging
-from logging.config import fileConfig
 
-fileConfig('../log.ini')
-logger = logging.getLogger()
+logger = setup.log()
 
 def transfer():
     """move files from the prod server"""
@@ -66,16 +65,19 @@ def get_an_entry(path):
 
     return res, id
 
+def export(cont, survey_name):
 
-def export(cont, id):
     keys = []
+
     for v in cont:
         keys+= list(v.iterkeys())
 
     keys = list(set(keys))
     base = ['' for v in keys]
 
-    with open(DEST_LOC + id + '.csv', 'w') as fp:
+    print DEST_LOC
+
+    with open(DEST_LOC + survey_name + '.csv', 'w') as fp:
         w = csv.writer(fp, delimiter=',')
         w.writerow(keys)
 
@@ -118,7 +120,7 @@ def get_all_entries():
     """ iterate through all surveys"""
     base = DEST_LOC + DV
     surveys = [f for f in listdir(base) if not isfile(join(base, f))]
-    logger.info('Extracting the following surveys...')
+    logger.info('****Extracting the following surveys...****')
     logger.info(surveys)
 
     #directory structure: .../submissions/date_file/surveys/entry_id/.osm|.xml|.json
@@ -133,9 +135,7 @@ def get_all_entries():
             res, id = get_an_entry(join(cd, sl) + '/')
             cont+=[res]
 
-        export(cont, id)
-
-
+        db.store(cont, id)
 
 if __name__ =='__main__':
     get_all_entries()
