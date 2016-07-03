@@ -3,9 +3,10 @@ import logging
 from logging.config import fileConfig
 
 from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-from models import Base
+Base = declarative_base()
 
 def config():
     cfg = ConfigParser.ConfigParser()
