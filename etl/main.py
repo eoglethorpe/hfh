@@ -1,20 +1,20 @@
 #TODO: check OS to see if running out of space?
-
+#TODO: generalize uuid col name
+#TODO: column types read somehow (adjust alter table DDL etc)
 """
 main etl executor
 """
 import time
 import json
-import ConfigParser
-import csv
-from os import environ, popen, listdir, walk
+from os import popen, listdir, walk
 from os.path import isfile, join
-
 
 import overpass
 
 import db
 import setup
+import osm
+import test
 
 #import config and set vars
 cfg = setup.config()
@@ -58,35 +58,10 @@ def transfer():
 def get_an_entry(path):
     res,id = _get_json(path)
 
-    if _get_osm_file(path):
-        res['local_osm_data'] = _get_osm_file(path)
-    else:
-        res['local_osm_data'] = ''
+    if osm.get_osm_file(path):
+        res['local_osm_data'] = osm.get_osm_file(path)
 
     return res, id
-
-def export(cont, survey_name):
-
-    keys = []
-
-    for v in cont:
-        keys+= list(v.iterkeys())
-
-    keys = list(set(keys))
-    base = ['' for v in keys]
-
-    print DEST_LOC
-
-    with open(DEST_LOC + survey_name + '.csv', 'w') as fp:
-        w = csv.writer(fp, delimiter=',')
-        w.writerow(keys)
-
-        for r in cont:
-            cb = base
-            for k,v in r.iteritems():
-                cb[keys.index(k)] = v
-
-            w.writerow(cb)
 
 def _get_json(path):
     with open(path + 'data.json') as f:
@@ -101,22 +76,25 @@ def _get_json(path):
 
     return jc, jc['formId']
 
-def _get_osm_file(path):
+def get_a_survey(surname):
+    base = DEST_LOC + DV
+
     try:
-        loc = [v.split('.')[-1] for v in listdir(path)].index('osm')
-        with open(path + listdir(path)[loc]) as f:
-		    content = ''.join(f.read().split())
+        cd = join(base, surname)
+    except Exception, e:
+        logger.warn('Could not locate survey %s' % surname, e)
 
-        return content
+    logger.info('Pulling %i entries for %s' % (len(walk(cd).next()[1]), surname))
+    cont = []
+    for sl in walk(cd).next()[1]:
+        res, id = get_an_entry(join(cd, sl) + '/')
+        cont+=[res]
 
-    except:
-        pass
-
-def _get_osm_hosted(id):
-    """get osm info from overpass"""
+    db.store(cont, id)
+    osm.store_an_osm(cont, id)
 
 
-def get_all_entries():
+def get_all_surveys():
     """ iterate through all surveys"""
     base = DEST_LOC + DV
     surveys = [f for f in listdir(base) if not isfile(join(base, f))]
@@ -127,16 +105,10 @@ def get_all_entries():
 
     #traverse through to get entries and their data files
     for fl in walk(base).next()[1]:
-        cd = join(base, fl)
-        logger.info('Pulling %i entries for %s' % (len(walk(cd).next()[1]), fl))
+        #get_a_survey(fl)
+        pass
 
-        cont = []
-        for sl in walk(cd).next()[1]:
-            res, id = get_an_entry(join(cd, sl) + '/')
-            cont+=[res]
-
-        db.store(cont, id)
-
+    get_a_survey('test')
 if __name__ =='__main__':
-    get_all_entries()
+    get_all_surveys()
     #transfer()
