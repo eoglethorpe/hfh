@@ -66,6 +66,7 @@ def _fetch_table(survey_name):
 
 def add_missing_cols(cont, survey_name):
     """add any additional columns and return table object"""
+    session.close()
     metadata = MetaData(bind=engine)
     ct =  _fetch_table(survey_name)
     keys = []
@@ -104,7 +105,10 @@ def _insert_new_valz(cont, survey_name):
     class Temp(Base):
         __table__ = ct
 
+    print 'right before'
+    session.close()
     existing = [v.instanceId for v in session.query(Temp).all()]
+    print 'right after'
 
     for v in cont:
         try:

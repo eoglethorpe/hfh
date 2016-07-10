@@ -21,7 +21,6 @@ engine = setup.db()['engine']
 metadata = MetaData(bind=engine)
 Base = declarative_base()
 
-api = overpass.API()
 logger = setup.log()
 
 def _add_wn_prefix(indict, worn):
@@ -32,22 +31,60 @@ def _add_wn_prefix(indict, worn):
 
     return redict
 
-def _get_osm(indict, worn):
-    #TODO: fetch multiple vals in osm call
+def _osm_wn_qry(ids, worn):
+    """structure query to send to OSM - generates for multiple ID looks up in one call
+        input: list of IDs, 'way'/'node'
+        return: query to use for OSM call
+    """
+    return '(' + ''.join(map(str, ['%s(%s);'% (worn,v) for v in ids])) + ')'
 
-    """return a dictionary of node and way over pass data with prefix
+def _columnify_osm_res(res):
+    """turn a dict of osm results into a dict that can be used for db insertion
+        input: osm resultset for just one feature
+        return: dict with values of colname:value
+            colname structured with layers of dict ie geometry_cooredinates or properties_building
+
+            sample res: {"features": [{"geometry": {"coordinates": [,], "type": "Point"},
+                            "id": int, "properties": {}, "type": "Feature"}],
+                            "type": "FeatureCollection"}
+
+            https://github.com/mvexel/overpass-api-python-wrapper/blob/master/overpass/api.py#L137-L141
+    """
+    coldict = {}
+
+    for k,v in res.iteritems():
+        if not isinstance(v, dict):
+            coldict['%s' % k] = v
+        else:
+            for sk,sv in v.iteritems():
+                #some property keys have colons which won't work as col names, so replace with _
+                coldict['%s_%s' % (k, sk.replace(':','_'))] = sv
+
+    return coldict
+
+def _get_osm(indict, worn):
+    """return a dictionary of node and way over pass data with prefix for a series of wn IDs
         input: tuple with dict of {uuid : way/nodeid}, 'way'/'node'
     """
-    redict = {}
+    #middict is used as a midddle man for processsing
+    api = overpass.API()
+    middict = {}
+    logger.info('Pulling osm data for ' + str(indict.values()))
+    osmdict = api.Get(_osm_wn_qry(indict.values(), worn))
 
+    for v in osmdict['features']:
+        middict[str(v['id'])] = v
+
+    retdict = {}
+    #use the value of indict to match with key of redict to match osm data with proper uuid
     for k,v in indict.iteritems():
-        #redict[k] = _add_wn_prefix(api.Get('%s(%s)' % (worn, v)), worn)
-        if worn == 'way':
-            redict[k] = _add_wn_prefix({'w_t2' : 'wayx', 'w_t1' : 'wayb'}, worn)
-        else:
-            redict[k] = _add_wn_prefix({'n_t2' : 'nodee', 'n_t1' : 'nodeb'}, worn)
+        if middict.has_key(v):
+            retdict[k] = _add_wn_prefix(_columnify_osm_res(middict[v]), worn)
 
-    return redict
+    #TODO: better way to terminate overpass connections - http://overpass-api.de/api/kill_my_queries
+    del(api)
+
+    return retdict
 
 def _get_max_nw(osment):
     """get ids for most recently added nodes or ways
@@ -115,9 +152,9 @@ def store_an_osm(cont, survey_nm):
     waydict, nodedict = _get_osm_id(multidict)
 
     if waydict:
-        logger.info("pulling way data for %s, id: %s" % (survey_nm, waydict.keys()))
+        logger.info("Pulling way data for %s, id: %s" % (survey_nm, waydict.keys()))
         _push_element(_get_osm(waydict, 'way'), survey_nm)
 
     if nodedict:
-        logger.info("pulling node data for %s, id: %s" % (survey_nm, nodedict.keys()))
+        logger.info("Pulling node data for %s, id: %s" % (survey_nm, nodedict.keys()))
         _push_element(_get_osm(nodedict, 'node'), survey_nm)

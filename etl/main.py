@@ -105,10 +105,9 @@ def get_all_surveys():
 
     #traverse through to get entries and their data files
     for fl in walk(base).next()[1]:
-        #get_a_survey(fl)
+        get_a_survey(fl)
         pass
 
-    get_a_survey('test')
 if __name__ =='__main__':
     get_all_surveys()
     #transfer()
