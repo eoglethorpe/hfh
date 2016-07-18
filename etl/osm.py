@@ -69,8 +69,10 @@ def _get_osm(indict, worn):
     #middict is used as a midddle man for processsing
     api = overpass.API()
     middict = {}
-    logger.info('Pulling osm data for ' + str(indict.values()))
-    osmdict = api.Get(_osm_wn_qry(indict.values(), worn))
+    ids = filter(None, indict.values())
+
+    logger.info('Pulling osm %s data for %s' % (worn, str(ids)))
+    osmdict = api.Get(_osm_wn_qry(ids, worn))
 
     for v in osmdict['features']:
         middict[str(v['id'])] = v
@@ -142,6 +144,15 @@ def _push_element(osmdict, survey_nm):
     db.add_missing_cols(osmdict.values(), survey_nm)
     db.update_valz('instanceId', osmdict, survey_nm)
 
+def update_all_osm(schema, survey_nm, uuidcol, wcol, ncol):
+    #TODO: handle if column doesnt' exist (currently just get None object returned
+    """blanket update all OSM values with IDs from wcol and/or ncol"""
+    #create dicts of {uuid: wnid} as this is format needed for methods
+    waydict = dict(zip(db.get_column(survey_nm, uuidcol), db.get_column(survey_nm, wcol)))
+    nodedict = dict(zip(db.get_column(survey_nm, uuidcol), db.get_column(survey_nm, ncol)))
+
+    _push_element(_get_osm(waydict, 'way'), survey_nm)
+    _push_element(_get_osm(nodedict, 'node'), survey_nm)
 
 def store_an_osm(cont, survey_nm):
     #TODO merge way and node dicts before call - not necessary but cool

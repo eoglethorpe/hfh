@@ -14,6 +14,8 @@ import setup
 from sqlalchemy import create_engine, Column, String, Integer, MetaData, Table, event
 from sqlalchemy.orm import mapper, create_session
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import literal_column
+
 
 logger = setup.log()
 session = setup.db()['session']
@@ -83,6 +85,16 @@ def add_missing_cols(cont, survey_name):
             engine.execute("ALTER TABLE %s ADD COLUMN %s VARCHAR DEFAULT NULL" % ('surveys.' + survey_name, v))
 
     return ct
+
+def get_column(survey_name, colnm):
+    """get all values for a given column"""
+    ct = _fetch_table(survey_name)
+
+    if ct.c.has_key(colnm):
+        #all() returns a tuple, we want first value as only returning 1 column
+        return [v[0] for v in session.query(ct.c.get(colnm)).all()]
+    else:
+        return None
 
 def update_valz(idcol, indict, survey_name):
     #TODO: possible update all in 1 call? not sure if worth effort if update calls are fast enough and low volume
