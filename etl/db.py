@@ -30,61 +30,49 @@ def _store_raw(cont, survey_name):
     existing = [v.uu_id for v in session.query(RawSurvey).all()]
 
     for r in cont:
-        if r['instanceId'] not in existing:
+        if r['meta_instanceId'] not in existing:
             to_add = RawSurvey(
-                uu_id = r['instanceId'],
+                uu_id = r['meta_instanceId'],
                 form_id = survey_name,
                 content = str(cont),
                 date_added = datetime.datetime.now()
             )
             session.add(to_add)
-            logger.info('Storing entry for survey: %s id:%s' % (survey_name,r['instanceId']))
+            logger.info('Storing entry for survey: %s id:%s' % (survey_name,r['meta_instanceId']))
         else:
-            logger.warn('Existing raw entry for survey: %s id:%s' % (survey_name,r['instanceId']))
+            logger.warn('Existing raw entry for survey: %s id:%s' % (survey_name,r['meta_instanceId']))
 
     session.commit()
 
 def _create_table(cont, survey_name):
-    """create table and all available columns"""
-    keys = []
-    for v in cont:
-        keys+= list(v.iterkeys())
-
-    keys = list(set(keys))
-    keys.remove('instanceId')
+    """create table"""
 
     class TempTable(Base):
         __table__ = Table(survey_name, Base.metadata,
-            Column('instanceId', String(), primary_key=True),
-            * (Column(v, String()) for v in keys),
-            schema = 'surveys')
+            Column('meta_instanceId', String(), primary_key=True), schema = 'surveys')
 
     Base.metadata.create_all(engine)
 
 def _fetch_table(survey_name):
     """return table object of table created on the fly"""
+    session.close()
     metadata = MetaData(bind=engine)
     return Table(survey_name, metadata, autoload=True, schema = 'surveys')
 
 def add_missing_cols(cont, survey_name):
     """add any additional columns and return table object"""
-    session.close()
-    metadata = MetaData(bind=engine)
     ct =  _fetch_table(survey_name)
     keys = []
 
     for v in cont:
-        keys+= list(v.iterkeys())
+        keys += v.iterkeys()
 
-    cols = [c.name for c in ct.columns]
+    cols = [c.name.lower() for c in ct.columns]
 
-    for v in list(set(keys)):
-        if v not in cols:
+    for v in sorted(set(keys)):
+        if v.lower() not in cols:
             logger.info("Adding column %s for %s" % (v, 'surveys.' + survey_name))
-            session.close()
             engine.execute("ALTER TABLE %s ADD COLUMN %s VARCHAR DEFAULT NULL" % ('surveys.' + survey_name, v))
-
-    return ct
 
 def get_column(survey_name, colnm):
     """get all values for a given column"""
@@ -98,7 +86,6 @@ def get_column(survey_name, colnm):
 
 def update_valz(idcol, indict, survey_name):
     #TODO: possible update all in 1 call? not sure if worth effort if update calls are fast enough and low volume
-    #TODO: fix idcol to use ref instead of hardcode
     """update given columns with associated values
         idcol: column whose id is being used in update
         cont: dict of dicts containing {uuid : {colnm : val}}
@@ -107,7 +94,7 @@ def update_valz(idcol, indict, survey_name):
     ct = _fetch_table(survey_name)
 
     for k,v in indict.iteritems():
-        stmt = ct.update().where(ct.c.instanceId == k).values(v)
+        stmt = ct.update().where(ct.c.meta_instanceId == k).values(v)
         engine.execute(stmt)
 
 def _insert_new_valz(cont, survey_name):
@@ -115,16 +102,14 @@ def _insert_new_valz(cont, survey_name):
     ct = add_missing_cols(cont, survey_name)
 
     class Temp(Base):
-        __table__ = ct
+        __table__ = _fetch_table(survey_name)
 
-    print 'right before'
     session.close()
-    existing = [v.instanceId for v in session.query(Temp).all()]
-    print 'right after'
+    existing = [v.meta_instanceId for v in session.query(Temp).all()]
 
     for v in cont:
         try:
-            if v['instanceId'] not in existing:
+            if v['meta_instanceId'] not in existing:
                 v = {k:str(v) for k, v in v.iteritems()}
                 Temp.__table__.insert().execute([v])
         except:
@@ -132,7 +117,7 @@ def _insert_new_valz(cont, survey_name):
 
 def store(cont, survey_name):
     """store a batch of surveys"""
-    _store_raw(cont, survey_name)
+    #_store_raw(cont, survey_name)
 
     if not engine.has_table(survey_name, schema='surveys'):
         logger.info('Creating table for %s' % survey_name)

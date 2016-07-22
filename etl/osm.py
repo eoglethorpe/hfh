@@ -142,7 +142,7 @@ def _push_element(osmdict, survey_nm):
         """
 
     db.add_missing_cols(osmdict.values(), survey_nm)
-    db.update_valz('instanceId', osmdict, survey_nm)
+    db.update_valz('meta_instanceId', osmdict, survey_nm)
 
 def update_all_osm(schema, survey_nm, uuidcol, wcol, ncol):
     #TODO: handle if column doesnt' exist (currently just get None object returned
@@ -158,7 +158,7 @@ def store_an_osm(cont, survey_nm):
     #TODO merge way and node dicts before call - not necessary but cool
     """pull most recent nodes and ways data for given surey from osm"""
     #dict of {uuid : osm data}
-    multidict = {v['instanceId'] : v['local_osm_data'] for v in cont if v.has_key('local_osm_data')}
+    multidict = {v['meta_instanceId'] : v['local_osm_data'] for v in cont if v.has_key('local_osm_data')}
 
     waydict, nodedict = _get_osm_id(multidict)
 
