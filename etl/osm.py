@@ -3,6 +3,7 @@
 import re
 import time
 import datetime
+import ast
 import xml.dom.minidom
 from os import listdir
 
@@ -136,12 +137,53 @@ def get_osm_file(path):
     except:
         pass
 
+def _geomify_way(wv):
+    """convert to POLYGON()"""
+    for v in ('{','}','"','(',')'):
+        wv = wv.replace(v,'')
+
+    wl = wv.split(',')
+
+    out = 'POLYGON(('
+    flop = False
+    for i,v in enumerate(wl):
+        if i == len(wl)-1:
+            add = ')'
+        elif flop:
+            add = ','
+        else:
+            add = ' '
+
+        out += v+add
+        flop = True
+
+    print out
+    return out
+
+def geomify(osmdict):
+    """convert geometry fields to postgis acceptable formats"""
+    WAY_COL = 'way_geometry_coordinates'
+    NODE_COL = 'node_geometry_coordinates'
+
+    for k,v in osmdict.iteritems():
+        for ik, iv in v.iteritems():
+            if ik == WAY_COL:
+                v[ik] = _geomify_way(iv)
+            elif ik == NODE_COL:
+                out = 'POINT('
+
+    return osmdict
+
+
+
+
 def _push_element(osmdict, survey_nm):
     """store osm data for >=1 ways or nodes
         input: dict of dicts: {uuid : {obj col name : obj value}, survey name
         """
 
     db.add_missing_cols(osmdict.values(), survey_nm)
+    osmdict = geomify(osmdict)
     db.update_valz('meta_instanceId', osmdict, survey_nm)
 
 def update_all_osm(schema, survey_nm, uuidcol, wcol, ncol):

@@ -115,12 +115,16 @@ def _insert_new_valz(cont, survey_name):
         except:
             print 'ERROR' + str(v)
 
+
 def store(cont, survey_name):
     """store a batch of surveys"""
     #_store_raw(cont, survey_name)
 
-    if not engine.has_table(survey_name, schema='surveys'):
-        logger.info('Creating table for %s' % survey_name)
-        _create_table(cont, survey_name)
+    if engine.has_table(survey_name, schema='surveys'):
+        logger.info('Dropping table for %s' % survey_name)
+        _fetch_table(survey_name).drop(engine)
+
+    logger.info('Creating table for %s' % survey_name)
+    _create_table(cont, survey_name)
 
     _insert_new_valz(cont, survey_name)

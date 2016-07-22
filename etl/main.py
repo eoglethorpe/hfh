@@ -84,7 +84,7 @@ def _break_up(jc):
                 add = ''
                 if num != 0:
                     add = str(num) + '_'
-                
+
                 for ik, iv in e.iteritems():
                     new_jc[k + '_' + add + ik] = iv
 
@@ -135,5 +135,3 @@ def get_all_surveys():
 if __name__ =='__main__':
     get_all_surveys()
     #transfer(imgs = False)
-
-    #_get_json('s')
