@@ -111,9 +111,11 @@ def get_a_survey(surname):
 
     logger.info('Pulling %i entries for %s' % (len(walk(cd).next()[1]), surname))
     cont = []
+
     for sl in walk(cd).next()[1]:
         res, id = get_an_entry(join(cd, sl) + '/')
         cont += [res]
+
 
     db.store(cont, id)
     osm.store_an_osm(cont, id)
