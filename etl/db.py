@@ -1,20 +1,13 @@
 """
 for interfacing with DB
 """
-import ConfigParser
 import datetime
-import logging
-from logging.config import fileConfig
-
-from sqlalchemy.engine import result
 
 from models import RawSurvey
 import setup
 
-from sqlalchemy import create_engine, Column, String, Integer, MetaData, Table, event
-from sqlalchemy.orm import mapper, create_session
+from sqlalchemy import Column, String, MetaData, Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql import literal_column
 
 
 logger = setup.log()
@@ -23,6 +16,7 @@ engine = setup.db()['engine']
 metadata = MetaData(bind=engine)
 Base = declarative_base()
 
+COORD_COL = setup.config().get('OSM', 'WAY_COL')
 
 def _store_raw(cont, survey_name):
     logger.info('Storing raw entries for ' + survey_name)
@@ -71,8 +65,12 @@ def add_missing_cols(cont, survey_name):
 
     for v in sorted(set(keys)):
         if v.lower() not in cols:
-            logger.info("Adding column %s for %s" % (v, 'surveys.' + survey_name))
-            engine.execute("ALTER TABLE %s ADD COLUMN %s VARCHAR DEFAULT NULL" % ('surveys.' + survey_name, v))
+            if v.lower() in ('way_' + COORD_COL, 'node_' + COORD_COL) :
+                logger.info("Adding geometry column %s for %s" % (v, 'surveys.' + survey_name))
+                engine.execute("ALTER TABLE %s ADD COLUMN %s GEOMETRY DEFAULT NULL" % ('surveys.' + survey_name, v))
+            else:
+                logger.info("Adding column %s for %s" % (v, 'surveys.' + survey_name))
+                engine.execute("ALTER TABLE %s ADD COLUMN %s VARCHAR DEFAULT NULL" % ('surveys.' + survey_name, v))
 
 def get_column(survey_name, colnm):
     """get all values for a given column"""

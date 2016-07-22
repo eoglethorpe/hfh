@@ -39,7 +39,7 @@ def _osm_wn_qry(ids, worn):
     """
     return '(' + ''.join(map(str, ['%s(%s);'% (worn,v) for v in ids])) + ')'
 
-def _columnify_osm_res(res):
+def _columnify_osm_res(res, worn):
     """turn a dict of osm results into a dict that can be used for db insertion
         input: osm resultset for just one feature
         return: dict with values of colname:value
@@ -61,9 +61,16 @@ def _columnify_osm_res(res):
                 #some property keys have colons which won't work as col names, so replace with _
                 coldict['%s_%s' % (k, sk.replace(':','_'))] = sv
 
+    if worn == 'way':
+        coldict['geometry_coordinates'] = _geomify_way(coldict['geometry_coordinates'])
+    elif worn == 'node':
+        coldict['geometry_coordinates'] =_geomify_node(coldict['geometry_coordinates'])
+        pass
+
     return coldict
 
 def _get_osm(indict, worn):
+    #TODO: fix logic of this
     """return a dictionary of node and way over pass data with prefix for a series of wn IDs
         input: tuple with dict of {uuid : way/nodeid}, 'way'/'node'
     """
@@ -78,11 +85,12 @@ def _get_osm(indict, worn):
     for v in osmdict['features']:
         middict[str(v['id'])] = v
 
+
     retdict = {}
     #use the value of indict to match with key of redict to match osm data with proper uuid
     for k,v in indict.iteritems():
         if middict.has_key(v):
-            retdict[k] = _add_wn_prefix(_columnify_osm_res(middict[v]), worn)
+            retdict[k] = _add_wn_prefix(_columnify_osm_res(middict[v], worn), worn)
 
     #TODO: better way to terminate overpass connections - http://overpass-api.de/api/kill_my_queries
     del(api)
@@ -137,53 +145,26 @@ def get_osm_file(path):
     except:
         pass
 
-def _geomify_way(wv):
-    """convert to POLYGON()"""
-    for v in ('{','}','"','(',')'):
-        wv = wv.replace(v,'')
+def _geomify_node(coordlist):
+    return 'POINT(' + str(coordlist[0]) + ' ' + str(coordlist[1]) + ')'
 
-    wl = wv.split(',')
-
+def _geomify_way(coordlist):
+    """convert to coordinate value to POLYGON()"""
     out = 'POLYGON(('
-    flop = False
-    for i,v in enumerate(wl):
-        if i == len(wl)-1:
-            add = ')'
-        elif flop:
-            add = ','
+    for i,v in enumerate(coordlist):
+        out += str(v[0]) + ' ' + str(v[1])
+        if i == len(coordlist)-1:
+            out += '))'
         else:
-            add = ' '
+            out += ','
 
-        out += v+add
-        flop = True
-
-    print out
     return out
-
-def geomify(osmdict):
-    """convert geometry fields to postgis acceptable formats"""
-    WAY_COL = 'way_geometry_coordinates'
-    NODE_COL = 'node_geometry_coordinates'
-
-    for k,v in osmdict.iteritems():
-        for ik, iv in v.iteritems():
-            if ik == WAY_COL:
-                v[ik] = _geomify_way(iv)
-            elif ik == NODE_COL:
-                out = 'POINT('
-
-    return osmdict
-
-
-
 
 def _push_element(osmdict, survey_nm):
     """store osm data for >=1 ways or nodes
         input: dict of dicts: {uuid : {obj col name : obj value}, survey name
         """
-
     db.add_missing_cols(osmdict.values(), survey_nm)
-    osmdict = geomify(osmdict)
     db.update_valz('meta_instanceId', osmdict, survey_nm)
 
 def update_all_osm(schema, survey_nm, uuidcol, wcol, ncol):
