@@ -95,7 +95,7 @@ def _break_up(jc):
 
 def _get_json(path):
     with open(path + 'data.json') as f:
-		content = ''.join(f.read().split())
+        content = ' '.join(f.read().split())
 
     jc = _break_up(json.loads(content))
 
