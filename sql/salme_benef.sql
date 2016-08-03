@@ -14,13 +14,15 @@ create table govt.nuwakot_benef
 	enroll_type varchar
 );
 
+
+--this command won't work on the AWS RDS. http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL.Procedural.Importing.html
 COPY govt.nuwakot_benef (master_serial,district,vdc_num,vdc,ward,tol,reg_no,cont_serial,hoh_name,hoh_gender,enroll_type)
-FROM '/Users/ewanog/Google Drive/HFH Drive/Data/down_with_the_govt/nuwakot_benef.csv' DELIMITER ',' CSV;
+FROM 'path' DELIMITER ',' CSV;
 
 create schema if not exists surveys_edit;
 
 drop table if exists surveys_edit.baseline_salme;
-create table if not exists surveys_edit.baseline_salme as 
+create table surveys_edit.baseline_salme 
 select * from surveys.baseline_reconstruction b
 LEFT JOIN 
 (
@@ -38,6 +40,8 @@ LEFT JOIN
 		enroll_type as "govt_enroll_type"
 	from govt.nuwakot_benef) n
 ON b.general_info_registration_number = n.govt_reg_no;
+
+alter table surveys_edit.baseline_salme add PRIMARY KEY ("meta_instanceId");
 
 select govt_reg_no, count(*) from surveys_edit.baseline_salme
 group by 1;
