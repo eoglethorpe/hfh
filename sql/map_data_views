@@ -1,0 +1,126 @@
+--sum by ward
+--pct by ward (of the given categories)
+
+CREATE SCHEMA IF NOT EXISTS map_data;
+
+--hh damage
+
+DROP VIEW IF EXISTS map_data.hh_dmg;
+CREATE VIEW map_data.hh_dmg AS
+SELECT * FROM
+(
+	SELECT
+		replace(general_info_ward, 'ward_', '')::integer AS ward,
+		count(CASE WHEN(house_info_dam_type LIKE 'negligible') THEN 1 ELSE NULL END) as negligible_sum,
+		count(CASE WHEN(house_info_dam_type LIKE 'sustainable') THEN 1 ELSE NULL END) as sustainable_sum,
+		count(CASE WHEN(house_info_dam_type LIKE 'moderate') THEN 1 ELSE NULL END) as moderate_sum,
+		count(CASE WHEN(house_info_dam_type LIKE 'destruction') THEN 1 ELSE NULL END) as destruction_sum,
+		count(CASE WHEN(house_info_dam_type LIKE 'heavy_damage') THEN 1 ELSE NULL END) as heavy_damage_sum,
+		count(CASE WHEN(house_info_dam_type 
+						NOT IN ('heavy_damage', 'destruction', 'moderate', 'sustainable', 'negligible') 
+						OR house_info_dam_type IS NULL)
+						THEN 1 ELSE NULL END) as other_sum,
+		count(CASE WHEN(house_info_dam_type LIKE 'negligible') THEN 1 ELSE NULL END)/count(*)::float as negligible_pct,
+		count(CASE WHEN(house_info_dam_type LIKE 'sustainable') THEN 1 ELSE NULL END)/count(*)::float as sustainable_pct,
+		count(CASE WHEN(house_info_dam_type LIKE 'moderate') THEN 1 ELSE NULL END)/count(*)::float as moderate_pct,
+		count(CASE WHEN(house_info_dam_type LIKE 'destruction') THEN 1 ELSE NULL END)/count(*)::float as destruction_pct,
+		count(CASE WHEN(house_info_dam_type LIKE 'heavy_damage') THEN 1 ELSE NULL END)/count(*)::float as heavy_damage_pct,
+		count(CASE WHEN(house_info_dam_type 
+						NOT IN ('heavy_damage', 'destruction', 'moderate', 'sustainable', 'negligible') 
+						OR house_info_dam_type IS NULL)
+						THEN 1 ELSE NULL END)/count(*)::float as other_pct
+	FROM "surveys_edit.baseline_salme"
+	GROUP BY 1
+) b
+JOIN 
+(SELECT hlcit_code, p_code, geom, ward_no FROM base.salme_wards) s
+ON b.ward = s.ward_no;
+
+
+--monthly expenditure
+
+DROP VIEW IF EXISTS map_data.income_expend;
+CREATE VIEW map_data.income_expend AS
+SELECT * FROM
+(
+	SELECT
+		replace(general_info_ward, 'ward_', '')::integer AS ward,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'below_10k') THEN 1 ELSE NULL END) as below_10k_sum,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'bet_10k_20k') THEN 1 ELSE NULL END) as bet_10k_20k_sum,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'bet_20k_30k') THEN 1 ELSE NULL END) as bet_20k_30k_sum,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'above_40k') THEN 1 ELSE NULL END) as above_40k_sum,
+		count(CASE WHEN(income_expense_monthly_expenditure 
+						NOT IN ('above_40k', 'bet_20k_30k', 'bet_10k_20k', 'below_10k', 'negligible') 
+						OR income_expense_monthly_expenditure IS NULL)
+						THEN 1 ELSE NULL END) as other_sum,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'below_10k') THEN 1 ELSE NULL END)/count(*)::float as below_10k_pct,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'bet_10k_20k') THEN 1 ELSE NULL END)/count(*)::float as bet_10k_20k_pct,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'bet_20k_30k') THEN 1 ELSE NULL END)/count(*)::float as bet_20k_30k_pct,
+		count(CASE WHEN(income_expense_monthly_expenditure LIKE 'above_40k') THEN 1 ELSE NULL END)/count(*)::float as above_40k_pct,
+		count(CASE WHEN(income_expense_monthly_expenditure 
+						NOT IN ('above_40k', 'bet_20k_30k', 'bet_10k_20k', 'below_10k') 
+						OR income_expense_monthly_expenditure IS NULL)
+						THEN 1 ELSE NULL END)/count(*)::float as other_pct
+	FROM "surveys_edit.baseline_salme"
+	GROUP BY 1
+) b
+JOIN 
+(SELECT hlcit_code, p_code, geom, ward_no FROM base.salme_wards) s
+ON b.ward = s.ward_no;
+
+--hoh gender(done once clean+joined)
+--govt_hoh_gender
+
+
+--toilets
+DROP VIEW IF EXISTS map_data.toilet_avail;
+CREATE VIEW map_data.toilet_avail AS
+SELECT * FROM
+(
+	SELECT
+		replace(general_info_ward, 'ward_', '')::integer AS ward,
+		count(CASE WHEN(toilet_info_toilet_yes LIKE 'no') THEN 1 ELSE NULL END) as no_sum,
+		count(CASE WHEN(toilet_info_toilet_yes LIKE 'yes') THEN 1 ELSE NULL END) as yes_sum,
+		count(CASE WHEN(toilet_info_toilet_yes 
+						NOT IN ('yes','no') 
+						OR toilet_info_toilet_yes IS NULL)
+						THEN 1 ELSE NULL END) as other_sum,
+		count(CASE WHEN(toilet_info_toilet_yes LIKE 'no') THEN 1 ELSE NULL END)/count(*)::float as no_pct,
+		count(CASE WHEN(toilet_info_toilet_yes LIKE 'yes') THEN 1 ELSE NULL END)/count(*)::float as yes_pct,
+		count(CASE WHEN(toilet_info_toilet_yes 
+						NOT IN ('yes', 'no') 
+						OR toilet_info_toilet_yes IS NULL)
+						THEN 1 ELSE NULL END)/count(*)::float as other_pct
+	FROM "surveys_edit.baseline_salme"
+	GROUP BY 1
+) b
+JOIN 
+(SELECT hlcit_code, p_code, geom, ward_no FROM base.salme_wards) s
+ON b.ward = s.ward_no;
+
+--water available
+
+DROP VIEW IF EXISTS map_data.water_avail;
+CREATE VIEW map_data.water_avail AS
+SELECT * FROM
+(
+	SELECT
+		replace(general_info_ward, 'ward_', '')::integer AS ward,
+		count(CASE WHEN(water_source_avail_water LIKE 'moderate') THEN 1 ELSE NULL END) as moderate_sum,
+		count(CASE WHEN(water_source_avail_water LIKE 'scarce') THEN 1 ELSE NULL END) as scarce_sum,
+		count(CASE WHEN(water_source_avail_water 
+						NOT IN ('scarce','moderate') 
+						OR water_source_avail_water IS NULL)
+						THEN 1 ELSE NULL END) as other_sum,
+		count(CASE WHEN(water_source_avail_water LIKE 'moderate') THEN 1 ELSE NULL END)/count(*)::float as moderate_pct,
+		count(CASE WHEN(water_source_avail_water LIKE 'scarce') THEN 1 ELSE NULL END)/count(*)::float as scarce_pct,
+		count(CASE WHEN(water_source_avail_water 
+						NOT IN ('scarce', 'moderate') 
+						OR water_source_avail_water IS NULL)
+						THEN 1 ELSE NULL END)/count(*)::float as other_pct
+	FROM "surveys_edit.baseline_salme"
+	GROUP BY 1
+) b
+JOIN 
+(SELECT hlcit_code, p_code, geom, ward_no FROM base.salme_wards) s
+ON b.ward = s.ward_no;
