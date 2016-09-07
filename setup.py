@@ -6,6 +6,7 @@ setup(
     author='eoglethorpe',
     author_email='ewanogle@gmail.com',
     description='Scripts for Habitat for Humanity Nepal EQ Reconstruction',
+    packages=['hfh'],
     install_requires=[
         'sqlalchemy',
         'overpass',
