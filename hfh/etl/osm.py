@@ -6,17 +6,11 @@ import xml.dom.minidom
 from os import listdir
 
 import overpass
-from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import declarative_base
 
 import db
 import mgmt
 
 logger = mgmt.logger
-session = mgmt.Session()
-engine = mgmt.engine
-Base = declarative_base()
-metadata = MetaData(bind=engine)
 
 def _add_wn_prefix(indict, worn):
     """add way_ or node_ to column values of an osm dict"""
@@ -63,31 +57,38 @@ def _columnify_osm_res(res, worn):
 
     return coldict
 
+
+def _qry_osm(ids, worn):
+    """appropriately query OSM. we can only query a max of 1023 elements at a time"""
+    api = overpass.API()
+
+    SKIP = 1023
+    ret = []
+    for i in xrange(0, len(ids)-1, 1023):
+        ret += api.Get(_osm_wn_qry([str(v) for v in ids[i : i+SKIP]], worn))['features']
+
+    #TODO: better way to terminate overpass connections - http://overpass-api.de/api/kill_my_queries
+    del(api)
+
+    return ret
+
 def _get_osm(indict, worn):
     #TODO: fix logic of this
     """return a dictionary of node and way over pass data with prefix for a series of wn IDs
         input: tuple with dict of {uuid : way/nodeid}, 'way'/'node'
     """
-    #middict is used as a midddle man for processsing
-    middict = {}
     ids = filter(None, indict.values())
     logger.info('Pulling osm %s data for %s' % (worn, str(ids)))
 
-    api = overpass.API()
-    osmdict = api.Get(_osm_wn_qry(ids, worn))
-
-    for v in osmdict['features']:
+    middict = {}
+    for v in _qry_osm(ids, worn):
         middict[str(v['id'])] = v
-
 
     retdict = {}
     #use the value of indict to match with key of redict to match osm data with proper uuid
     for k,v in indict.iteritems():
         if middict.has_key(v):
             retdict[k] = _add_wn_prefix(_columnify_osm_res(middict[v], worn), worn)
-
-    #TODO: better way to terminate overpass connections - http://overpass-api.de/api/kill_my_queries
-    del(api)
 
     return retdict
 
@@ -132,7 +133,7 @@ def get_osm_file(path):
     try:
         loc = [v.split('.')[-1] for v in listdir(path)].index('osm')
         with open(path + listdir(path)[loc]) as f:
-		    content = ' '.join(f.read().split())
+            content = ' '.join(f.read().split())
 
         return content
 
@@ -163,7 +164,8 @@ def _push_element(osmdict, survey_nm):
 
 
 def update_all_osm(schema, survey_nm, uuidcol, wcol, ncol):
-    #TODO: handle if column doesnt' exist (currently just get None object returned
+    #TODO: handle if column doesnt' exist (currently just get None object returned)
+    #TODO: set existing values to Null if new one is found so that you don't have leftovers  from previous entry
     """blanket update all OSM values with IDs from wcol and/or ncol"""
     #create dicts of {uuid: wnid} as this is format needed for methods
     waydict = dict(zip(db.get_column(survey_nm, uuidcol), db.get_column(survey_nm, wcol)))
