@@ -9,8 +9,13 @@ from sqlalchemy.orm import sessionmaker
 cfg = ConfigParser.ConfigParser()
 cfg.read('/Users/ewanog/code/repos/hfh/hfh/etl/config.ini')
 
+# FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
+# logging.basicConfig(filename='example.log',level=logging.DEBUG, format = FORMAT)
+#logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+
 logging.config.fileConfig('/Users/ewanog/code/repos/hfh/hfh/etl/log.ini')
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 engine = create_engine(cfg.get('DB', 'CXN'))
 

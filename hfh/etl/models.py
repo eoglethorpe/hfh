@@ -42,5 +42,3 @@ def create():
 
 
     Base.metadata.create_all(engine)
-
-create()

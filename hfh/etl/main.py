@@ -60,16 +60,8 @@ def transfer(imgs):
     else:
         logger.info('Surveys transfer completed')
 
-def _get_an_entry(path, survey_nm):
-    res,id = _get_json(path, survey_nm)
-
-    if osm.get_osm_file(path):
-        res['local_osm_data'] = osm.get_osm_file(path)
-
-    return res, id
-
 def _break_up_list(k, v, list):
-    """if we want to keep repeatin vals in same table"""
+    """if we want to keep repeating vals in same table"""
     list_jc = []
     for num, e in enumerate(v):
         #so we don't have 0'd number entry
@@ -83,8 +75,11 @@ def _break_up_list(k, v, list):
     return list_jc
 
 def _break_up(jc, survey_nm):
-    """take in json contents for a given entry and break up dicts and lists"""
+    """take in json contents for a given entry and handle dicts and lists
+        returns structured json content and lists for relational table creation"""
+    #TODO: param to decide if creating relational tables or keeping in same table
     new_jc = OrderedDict()
+    rel = []
 
     for k,v in jc.iteritems():
         #if the value is part of a group - non repeating
@@ -93,29 +88,38 @@ def _break_up(jc, survey_nm):
                 new_jc[k + '_' + ik] = iv
 
         elif isinstance(v,list):
-            #if the value is part of repeating question (ie household member occupations)
-            for ent in v:
-                db.rltl_tbl(tbl = survey_nm, col = k, addl = {'general_info_registration_number' : jc['general_info']['registration_number'],
-                     'meta_instanceId' : jc['meta']['instanceId']}, vals = v)
+            #add in additional metadata to each item
+            for e in v:
+                e['general_info_registration_number'] = jc['general_info']['registration_number']
+                e['meta_instanceId'] = jc['meta']['instanceId']
 
-        #TODO: param to decide if creating relational tables or keeping in same table
-        # elif isinstance(v,list):
-        #     new_jc += _break_up_list(k, v, list)
+            rel.append({'col': k, 'vals' : v})
 
         else:
             new_jc[k] = v
 
-    return new_jc
+    return {'content': new_jc, 'rel': rel}
 
-def _get_json(path, survey_nm):
+def _parse_a_json(path, survey_nm):
+    """iterate through json for a given survey on a given data.json file"""
     with open(path + 'data.json') as f:
         content = ' '.join(f.read().split())
 
-    jc = _break_up(json.loads(content), survey_nm)
+    psd = _break_up(json.loads(content), survey_nm)
 
-    return jc, jc['meta_formId']
+    return {'content': psd['content'], 'id' : psd['content']['meta_formId'], 'rel': psd['rel']}
 
-def get_a_survey(surname):
+def _get_an_entry(path, survey_nm):
+    """handle JSON and OSM files for a given entry"""
+    psd = _parse_a_json(path, survey_nm)
+
+    #add in OSM file contents if one exists
+    if osm.get_osm_file(path):
+        psd['content']['local_osm_data'] = osm.get_osm_file(path)
+
+    return psd
+
+def get_a_survey(schema, surname):
     base = DEST_LOC + DV
 
     try:
@@ -125,16 +129,27 @@ def get_a_survey(surname):
 
     logger.info('Pulling %i entries for %s' % (len(walk(cd).next()[1]), surname))
     cont = []
+    rel = []
 
+    #go through all the entries for a given survey
     for sl in walk(cd).next()[1]:
-        res, id = _get_an_entry(join(cd, sl) + '/', surname)
-        cont += [res]
+        ent = _get_an_entry(join(cd, sl) + '/', surname)
+        cont += [ent['content']]
+        rel += ent['rel']
 
-    db.store(cont, id)
-    osm.store_an_osm(cont, id)
+    #store main entries
+    logger.info('***Storing main table entries***')
+    db.store(cont, ent['id'])
+
+    logger.info('***Storing relational info***')
+    #store relational entries
+#    db.relational_ents(schema, surname, rel)
+
+    #get and store OSM data
+    osm.store_an_osm(cont, ent['id'])
 
 
-def get_all_surveys():
+def get_all_surveys(schema):
     """ iterate through all surveys"""
     base = DEST_LOC + DV
     surveys = [f for f in listdir(base) if not isfile(join(base, f))]
@@ -145,9 +160,10 @@ def get_all_surveys():
 
     #traverse through to get entries and their data files
     for fl in walk(base).next()[1]:
-        get_a_survey(fl)
+        get_a_survey(schema, fl)
 
 if __name__ =='__main__':
-    db._clear_schema('surveys')
-    get_all_surveys()
+    SCHEMA = 'surveys'
+    db._clear_schema(SCHEMA)
+    get_all_surveys(SCHEMA)
     #transfer(imgs = False)
