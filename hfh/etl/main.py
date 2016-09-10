@@ -143,7 +143,7 @@ def get_a_survey(schema, surname):
 
     logger.info('***Storing relational info***')
     #store relational entries
-#    db.relational_ents(schema, surname, rel)
+    db.relational_ents(schema, surname, rel)
 
     #get and store OSM data
     osm.store_an_osm(cont, ent['id'])
@@ -164,6 +164,6 @@ def get_all_surveys(schema):
 
 if __name__ =='__main__':
     SCHEMA = 'surveys'
+    transfer(imgs = False)
     db._clear_schema(SCHEMA)
     get_all_surveys(SCHEMA)
-    #transfer(imgs = False)
