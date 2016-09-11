@@ -66,6 +66,8 @@ def _qry_osm(ids, worn):
     ret = []
     for i in xrange(0, len(ids)-1, 1023):
         ret += api.Get(_osm_wn_qry([str(v) for v in ids[i : i+SKIP]], worn))['features']
+        #sleep so that we don't get multiple requests error
+        time.sleep(2)
 
     #TODO: better way to terminate overpass connections - http://overpass-api.de/api/kill_my_queries
     del(api)
