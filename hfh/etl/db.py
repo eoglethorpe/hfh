@@ -66,7 +66,7 @@ def _fetch_table(survey_name):
 def relational_ents(schema, survey_name, cont):
     """handle creation/update for a relational table w/ values from a repeating question
         input: survey name,
-        cont: [{vals: [values], col: [column name} ...] """
+        cont: [{vals: [{value set1}, {value set2}], col: column name} ...] """
     session.close()
     metadata = MetaData(bind=engine, schema=schema)
     metadata.reflect(engine)
@@ -81,12 +81,14 @@ def relational_ents(schema, survey_name, cont):
         if tbl_nm not in [t.name for t in metadata.tables.values()]:
             _create_table_serial_uuid(schema, tbl_nm)
 
+        to_ins = []
         #for each listing in an entry, add a column listing the count
         for v in group:
             for i,iv in enumerate(v['vals']):
                 iv['count'] = i+1
+                to_ins.append(iv)
 
-        _insert_new_valz([p for p in v['vals'] for v in c_srt], tbl_nm)
+        _insert_new_valz(to_ins, tbl_nm)
 
 def add_missing_cols(cont, survey_name):
     """add any additional columns and return table object"""

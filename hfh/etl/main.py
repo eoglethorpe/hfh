@@ -61,7 +61,7 @@ def transfer(imgs):
         logger.info('Surveys transfer completed')
 
 def _break_up_list(k, v, list):
-    """if we want to keep repeating vals in same table"""
+    """if we want to keep repeating vals in same table as opposed to rel... currently unused"""
     list_jc = []
     for num, e in enumerate(v):
         #so we don't have 0'd number entry
@@ -74,40 +74,26 @@ def _break_up_list(k, v, list):
 
     return list_jc
 
-def _break_up(jc, survey_nm):
-    """take in json contents for a given entry and handle dicts and lists
-        returns structured json content and lists for relational table creation"""
-    #TODO: param to decide if creating relational tables or keeping in same table
-    new_jc = OrderedDict()
-    rel = []
-
-    for k,v in jc.iteritems():
-        #if the value is part of a group - non repeating
-        if isinstance(v,dict):
-            for ik, iv in v.iteritems():
-                new_jc[k + '_' + ik] = iv
-
-        elif isinstance(v,list):
-            #add in additional metadata to each item
-            for e in v:
-                e['general_info_registration_number'] = jc['general_info']['registration_number']
-                e['meta_instanceId'] = jc['meta']['instanceId']
-
-            rel.append({'col': k, 'vals' : v})
-
-        else:
-            new_jc[k] = v
-
-    return {'content': new_jc, 'rel': rel}
+# def _break_up(jc, survey_nm):
+#     """take in json contents for a single entry and handle dicts and lists
+#         returns structured json content and lists for relational table creation"""
+#     #TODO: param to decide if creating relational tables or keeping in same table
+#     new_jc = OrderedDict()
+#     rel = []
+#
+#     for k,v in jc.iteritems():
+#         new_jc[k] = v
+#
+#     return {'content': new_jc, 'rel': rel}
 
 def _parse_a_json(path, survey_nm):
     """iterate through json for a given survey on a given data.json file"""
     with open(path + 'data.json') as f:
         content = ' '.join(f.read().split())
 
-    psd = _break_up(json.loads(content), survey_nm)
+    ret = json.loads(content)
 
-    return {'content': psd['content'], 'id' : psd['content']['meta_formId'], 'rel': psd['rel']}
+    return {'content': ret, 'id' : ret['meta']['formId']}
 
 def _get_an_entry(path, survey_nm):
     """handle JSON and OSM files for a given entry"""
@@ -118,6 +104,59 @@ def _get_an_entry(path, survey_nm):
         psd['content']['local_osm_data'] = osm.get_osm_file(path)
 
     return psd
+
+
+def find_rels(cont):
+    """iterate through all entries and identify which columns contain a list and are relational entries
+        input: cont (list of dictionaries)
+        return: ret (list of columns that relational"""
+    ret = []
+
+    for v in cont:
+        for ik, iv in v.iteritems():
+            if isinstance((iv), list):
+                if ik not in ret:
+                    ret.append(ik)
+
+    return ret
+
+def _break_up(cont):
+    """take in full contents, identify relational entries (ie lists) and add them to a seperate list for insertion,
+        dicts for grouped questions and individual items
+        input: cont (list of dictionaries)
+        return: cont (list of dictionaries without rels), rel (relatinonal entries)"""
+
+    cols = find_rels(cont)
+    rel = []
+    ret_cont = []
+    #iterate through each entry in cont and then through each item
+    for v in cont:
+        add_ent = {}
+        for ik, iv in v.iteritems():
+            #if this is a relational item
+            if ik in cols:
+                if not isinstance(iv, list):
+                    #if there is only one entry for a relational item we need to make it a list so it can be traversed
+                    iv = [iv]
+
+                for ind in iv:
+                    #add in additional data
+                    ind['general_info_registration_number'] = v['general_info']['registration_number']
+                    ind['meta_instanceId'] = v['meta']['instanceId']
+                rel.append({'col': ik, 'vals': iv})
+
+            #if the value is part of a group - non repeating
+            elif isinstance(iv,dict):
+                for entk, entv in iv.iteritems():
+                    add_ent[ik + '_' + entk] = entv
+            else:
+                add_ent[ik] = iv
+
+        #if we have added any non-relational items... should probably always be true
+        if add_ent:
+            ret_cont.append(add_ent)
+
+    return ret_cont, rel
 
 def get_a_survey(schema, surname):
     base = DEST_LOC + DV
@@ -135,14 +174,15 @@ def get_a_survey(schema, surname):
     for sl in walk(cd).next()[1]:
         ent = _get_an_entry(join(cd, sl) + '/', surname)
         cont += [ent['content']]
-        rel += ent['rel']
+
+    cont, rel = _break_up(cont)
 
     #store main entries
     logger.info('***Storing main table entries***')
     db.store(cont, ent['id'])
 
     logger.info('***Storing relational info***')
-    #store relational entries
+    #store relational entries'
     db.relational_ents(schema, surname, rel)
 
     #get and store OSM data
@@ -164,6 +204,6 @@ def get_all_surveys(schema):
 
 if __name__ =='__main__':
     SCHEMA = 'surveys'
-    transfer(imgs = False)
+#    transfer(imgs = False)
     db._clear_schema(SCHEMA)
     get_all_surveys(SCHEMA)
