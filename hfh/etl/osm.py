@@ -80,7 +80,7 @@ def _get_osm(indict, worn):
         input: tuple with dict of {uuid : way/nodeid}, 'way'/'node'
     """
     ids = filter(None, indict.values())
-    logger.info('Pulling osm %s data for %s' % (worn, str(ids)))
+    logger.info('Connecting to OSM...')
 
     middict = {}
     for v in _qry_osm(ids, worn):
@@ -185,9 +185,9 @@ def store_an_osm(cont, survey_nm):
     waydict, nodedict = _get_osm_id(multidict)
 
     if waydict:
-        logger.info("Pulling way data for %s, id: %s" % (survey_nm, waydict.keys()))
+        logger.info("Pulling way data for %i ways for %s" % (len(waydict.keys()), survey_nm))
         _push_element(_get_osm(waydict, 'way'), survey_nm)
 
     if nodedict:
-        logger.info("Pulling node data for %s, id: %s" % (survey_nm, nodedict.keys()))
+        logger.info("Pulling node data for %i nodes for %s" % (len(nodedict.keys()), survey_nm))
         _push_element(_get_osm(nodedict, 'node'), survey_nm)

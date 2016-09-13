@@ -141,8 +141,15 @@ def update_valz(idcol, indict, survey_name):
                 connection.execute(stmt)
 
             except Exception, e:
-                #catch issue where there is an unclosed polygon
-                err.append(str(stmt.parameters))
+                #catch issue where there is an unclosed polygon or other errors
+                params = stmt.parameters
+                if params.has_key('way_id'):
+                    err.append(str(stmt.parameters['way_id']) + ', ')
+                elif params.has_key('node_id'):
+                    err.append(str(stmt.parameters['node_id']) + ', ')
+                else:
+                    err.append(str(stmt.parameters))
+
                 connection = engine.connect()
                 continue
 

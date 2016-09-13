@@ -22,7 +22,6 @@ INIT_IP = cfg.get('AWS', 'init_ip')
 DEST_LOC = cfg.get('AWS', 'dest_loc')
 PEM = cfg.get('AWS', 'pem')
 DV = time.strftime("%Y-%m-%d:%H%M")
-DV = '2016-05-26:1211'
 
 logger = mgmt.logger
 
@@ -204,6 +203,6 @@ def get_all_surveys(schema):
 
 if __name__ =='__main__':
     SCHEMA = 'surveys'
-#    transfer(imgs = False)
+    transfer(imgs = False)
     db._clear_schema(SCHEMA)
     get_all_surveys(SCHEMA)
