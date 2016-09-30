@@ -132,7 +132,6 @@ def update_valz(idcol, indict, survey_name):
         survey_name: table to update
     """
     ct = _fetch_table(survey_name)
-    err = []
 
     with engine.begin() as connection:
         for k,v in indict.iteritems():
@@ -144,18 +143,14 @@ def update_valz(idcol, indict, survey_name):
                 #catch issue where there is an unclosed polygon or other errors
                 params = stmt.parameters
                 if params.has_key('way_id'):
-                    err.append(str(stmt.parameters['way_id']) + ', ')
+                    logger.warn(str(e.params['meta_instanceId_1']) + ' : ' + str(stmt.parameters['way_id']))
                 elif params.has_key('node_id'):
-                    err.append(str(stmt.parameters['node_id']) + ', ')
+                    logger.warn(str(e.params['meta_instanceId_1']) + ' : ' + str(stmt.parameters['node_id']))
                 else:
-                    err.append(str(stmt.parameters))
+                    logger.warn(str(stmt.parameters))
 
                 connection = engine.connect()
                 continue
-
-    if len(err) > 0:
-        logger.warn('\n\n*/*/* Problems inserting the following: */*/*\n')
-        logger.warn(err)
 
 def _insert_new_valz(cont, survey_name):
     """check to see if we have new entries and add data

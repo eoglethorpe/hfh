@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='hfh',
-    version='0.1',
+    version='0.2',
     author='eoglethorpe',
     author_email='ewanogle@gmail.com',
     description='Scripts for Habitat for Humanity Nepal EQ Reconstruction',
@@ -10,5 +10,7 @@ setup(
     install_requires=[
         'sqlalchemy',
         'overpass',
+        'click',
+        'qrcode'
     ],
 )
