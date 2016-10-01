@@ -22,7 +22,6 @@ INIT_IP = cfg.get('AWS', 'init_ip')
 DEST_LOC = cfg.get('AWS', 'dest_loc')
 PEM = cfg.get('AWS', 'pem')
 DV = time.strftime("%Y-%m-%d:%H%M")
-DV = '2016-09-13:2058'
 
 logger = mgmt.logger
 

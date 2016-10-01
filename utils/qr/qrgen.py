@@ -25,7 +25,7 @@ def ingest(path, vdc_name, id_name):
             try:
                 ids += [(int(row[vdc_name]), int(row[id_name]))]
             except Exception, e:
-                print 'could not parse baseline id of: ' + str(row[col_name]) + ' due to ' + str(e)
+                print 'could not parse baseline id of: ' + str(row) + ' due to ' + str(e)
     finally:
         f.close()
 
