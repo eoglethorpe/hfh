@@ -65,3 +65,6 @@ target/
 data_table_lib.php
 *.json
 *.geojson
+
+#etc
+config.ini
